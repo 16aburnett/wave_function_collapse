@@ -27,9 +27,9 @@ const EDGE_WIRE  = "1";
 const EDGE_CIRCUIT_SUBSTRATE        = "000";
 const EDGE_CIRCUIT_COMPONENT        = "111";
 const EDGE_CIRCUIT_CORNER_LEFT      = "200";
-const EDGE_CIRCUIT_CORNER_DOWN      = "300";
+const EDGE_CIRCUIT_CORNER_DOWN      = "002";
 const EDGE_CIRCUIT_CONNECTION_RIGHT = "002";
-const EDGE_CIRCUIT_CONNECTION_LEFT  = "003";
+const EDGE_CIRCUIT_CONNECTION_LEFT  = "200";
 const EDGE_CIRCUIT_GREEN_TRACK      = "444";
 const EDGE_CIRCUIT_GREY_WIRE        = "555";
 
@@ -260,8 +260,6 @@ function draw ()
             pop ();
         }
     }
-
-    // console.log (num_naturally_collapsed, num_forced_collapsed);
 
 }
 
