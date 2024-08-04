@@ -69,7 +69,7 @@ function setup ()
 {
     // Create a full screen square canvas
     // we want the canvas to be square so use whatever is the more constrained dim
-    let smallestDimension = min (windowWidth * 0.50 - 10, windowHeight * 0.75 - 20);
+    let smallestDimension = min (windowWidth, windowHeight);
     createCanvas (smallestDimension, smallestDimension);
     tile_width = smallestDimension / num_tile_cols;
     tile_height = smallestDimension / num_tile_rows;
@@ -86,6 +86,9 @@ function setup ()
             tile_candidates[i].push ([]);
         }
     }
+
+    // Generate rotated versions of tiles
+
 }
 
 //========================================================================
@@ -128,7 +131,7 @@ function draw ()
 function windowResized ()
 {
     // we want the canvas to be square so use whatever is the more constrained dim
-    let smallestDimension = min (windowWidth * 0.50 - 10, windowHeight * 0.75 - 20);
+    let smallestDimension = min (windowWidth, windowHeight);
     resizeCanvas(smallestDimension, smallestDimension);
     // Resize tiles
     tile_width = smallestDimension / num_tile_cols;
