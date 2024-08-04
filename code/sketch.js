@@ -9,13 +9,6 @@
 
 // Enumeration of the different types of tiles
 const TILE_EMPTY = -1;
-const TILE_BLANK =  0;
-const TILE_UP    =  1;
-const TILE_RIGHT =  2;
-const TILE_DOWN  =  3;
-const TILE_LEFT  =  4;
-const TILE_PLUS  =  5;
-const NUM_TILES = 6;
 
 // Enumeration of the different types of tile edge connections
 // Only blank edges can match with blank edges
@@ -35,32 +28,32 @@ let board = [];
 let tile_width  = 10;
 let tile_height = 10;
 
-// stores the actual images for a tile
-let tile_images = Array (NUM_TILES).fill (null);
-
 // stores the possible tile candidates for each cell of the board
 let tile_candidates = [];
 
-// Stores the edge connection types for determining which tiles can go next to each other
-let tile_edge_types = Array (NUM_TILES);
-//                             NORTH       EAST        SOUTH       WEST
-//                             UP          RIGHT       DOWN        LEFT
-tile_edge_types[TILE_BLANK] = [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK];
-tile_edge_types[TILE_UP   ] = [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ];
-tile_edge_types[TILE_RIGHT] = [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_BLANK];
-tile_edge_types[TILE_DOWN ] = [EDGE_BLANK, EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ];
-tile_edge_types[TILE_LEFT ] = [EDGE_WIRE , EDGE_BLANK, EDGE_WIRE , EDGE_WIRE ];
-tile_edge_types[TILE_PLUS ] = [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ];
+// stores static data representing different tile images
+// and rotated variants of nonsymmetric tiles
+let tile_types = [];
 
 //========================================================================
 
+// preload runs before setup
 function preload () {
-    tile_images[TILE_BLANK] = loadImage ('resources/blank.png');
-    tile_images[TILE_PLUS ] = loadImage ('resources/plus.png');
-    tile_images[TILE_UP   ] = loadImage ('resources/up.png');
-    tile_images[TILE_DOWN ] = loadImage ('resources/down.png');
-    tile_images[TILE_LEFT ] = loadImage ('resources/left.png');
-    tile_images[TILE_RIGHT] = loadImage ('resources/right.png');
+    tile_types.push (new Tile (
+        loadImage ('resources/blank.png'),
+        0,
+        [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/up.png'),
+        0,
+        [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/plus.png'),
+        0,
+        [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
+    ));
 }
 
 //========================================================================
@@ -73,6 +66,7 @@ function setup ()
     createCanvas (smallestDimension, smallestDimension);
     tile_width = smallestDimension / num_tile_cols;
     tile_height = smallestDimension / num_tile_rows;
+    angleMode(DEGREES);
 
     // Initialize the board with blank tiles
     for (let i = 0; i < num_tile_rows; ++i)
@@ -88,6 +82,47 @@ function setup ()
     }
 
     // Generate rotated versions of tiles
+    // 1. determine if rotating tile would result in a different image
+    // 2. if so, then rotate it four ways and add each rotation as a new tile
+    // iterate backwards since we are possibly adding to tile_types
+    for (let t = tile_types.length - 1; t >= 0; --t)
+    {
+        // determine if rotating this tile would result in a different image
+        // we know it will be the same image if the all the edge types are the same
+        // since rotating it will not create a different edge type pattern
+        if (tile_types[t].edge_types[0] == tile_types[t].edge_types[1] &&
+            tile_types[t].edge_types[1] == tile_types[t].edge_types[2] &&
+            tile_types[t].edge_types[2] == tile_types[t].edge_types[3])
+        {
+            // all edge types are the same
+            // assume this is perfectly symmetrical so no need to rotate
+            continue;
+        }
+        // Image can be rotated
+        // Create 0, 90, 180, 270 degree versions (0 is already done)
+        // 90 degrees means vector pointing up changes to pointing right
+        //   ^
+        //   |   ->  ---->
+        //   |
+        // 90 degrees (1 turn)
+        tile_types.push (new Tile (tile_types[t].image, 90, [
+            tile_types[t].edge_types[DIR_WEST],
+            tile_types[t].edge_types[DIR_NORTH],
+            tile_types[t].edge_types[DIR_EAST],
+            tile_types[t].edge_types[DIR_SOUTH]]));
+        // 180 degrees (2 turns)
+        tile_types.push (new Tile (tile_types[t].image, 180, [
+            tile_types[t].edge_types[DIR_SOUTH],
+            tile_types[t].edge_types[DIR_WEST],
+            tile_types[t].edge_types[DIR_NORTH],
+            tile_types[t].edge_types[DIR_EAST]]));
+        // 270 degrees (3 turns)
+        tile_types.push (new Tile (tile_types[t].image, 270, [
+            tile_types[t].edge_types[DIR_EAST],
+            tile_types[t].edge_types[DIR_SOUTH],
+            tile_types[t].edge_types[DIR_WEST],
+            tile_types[t].edge_types[DIR_NORTH]]));
+    }
 
 }
 
@@ -117,8 +152,13 @@ function draw ()
             // Draw tile
             let x = j * tile_width;
             let y = i * tile_height;
+            push ();
             stroke (0);
-            image (tile_images[board[i][j]], x, y, tile_width, tile_height);
+            translate (x + tile_width/2, y + tile_height/2);
+            imageMode(CENTER);
+            rotate (tile_types[board[i][j]].image_rotation);
+            image (tile_types[board[i][j]].image, 0, 0, tile_width, tile_height);
+            pop ();
         }
     }
 
@@ -162,31 +202,31 @@ function apply_wave_function_collapse_step ()
             if (board[i][j] != TILE_EMPTY)
                 continue;
             // Check each type of tile if it can go in this cell
-            for (let tile_candidate = 0; tile_candidate < NUM_TILES; ++tile_candidate)
+            for (let tile_candidate = 0; tile_candidate < tile_types.length; ++tile_candidate)
             {
                 // Ensure tile candidate agrees with NORTH tile, if exists and is filled in
-                if (i > 0 && board[i-1][j] != TILE_EMPTY && tile_edge_types[board[i-1][j]][DIR_SOUTH] != tile_edge_types[tile_candidate][DIR_NORTH])
+                if (i > 0 && board[i-1][j] != TILE_EMPTY && tile_types[board[i-1][j]].edge_types[DIR_SOUTH] != tile_types[tile_candidate].edge_types[DIR_NORTH])
                 {
                     // tile candidate is not compatible with NORTH tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && tile_edge_types[board[i][j+1]][DIR_WEST] != tile_edge_types[tile_candidate][DIR_EAST])
+                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && tile_types[board[i][j+1]].edge_types[DIR_WEST] != tile_types[tile_candidate].edge_types[DIR_EAST])
                 {
                     // tile candidate is not compatible with EAST tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with SOUTH tile, if exists and is filled in
-                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && tile_edge_types[board[i+1][j]][DIR_NORTH] != tile_edge_types[tile_candidate][DIR_SOUTH])
+                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && tile_types[board[i+1][j]].edge_types[DIR_NORTH] != tile_types[tile_candidate].edge_types[DIR_SOUTH])
                 {
                     // tile candidate is not compatible with SOUTH tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j > 0 && board[i][j-1] != TILE_EMPTY && tile_edge_types[board[i][j-1]][DIR_EAST] != tile_edge_types[tile_candidate][DIR_WEST])
+                if (j > 0 && board[i][j-1] != TILE_EMPTY && tile_types[board[i][j-1]].edge_types[DIR_EAST] != tile_types[tile_candidate].edge_types[DIR_WEST])
                 {
                     // tile candidate is not compatible with EAST tile
                     // skip to next tile candidate
@@ -222,7 +262,7 @@ function apply_wave_function_collapse_step ()
     if (has_collapsed == false)
     {
         // determine which cells have the lowest entropy (lowest num candidates)
-        let lowest_entropy = NUM_TILES;
+        let lowest_entropy = tile_types.length;
         let lowest_entropy_cells = []; // stores [i,j] for each cell of the lowest entropy set
         for (let i = 0; i < num_tile_rows && !has_collapsed; ++i)
         {
