@@ -7,14 +7,27 @@
 //========================================================================
 // Globals
 
+// Enumeration of the different types of tiles
 const TILE_EMPTY = -1;
 const TILE_BLANK =  0;
 const TILE_UP    =  1;
-const TILE_DOWN  =  2;
-const TILE_LEFT  =  3;
-const TILE_RIGHT =  4;
+const TILE_RIGHT =  2;
+const TILE_DOWN  =  3;
+const TILE_LEFT  =  4;
 const TILE_PLUS  =  5;
 const NUM_TILES = 6;
+
+// Enumeration of the different types of tile edge connections
+// Only blank edges can match with blank edges
+// and only wire edges can match with wire edges
+const EDGE_BLANK = 0;
+const EDGE_WIRE  = 1;
+
+// Enumeration of orthogonally neighboring cells
+const DIR_NORTH = 0;
+const DIR_EAST  = 1;
+const DIR_SOUTH = 2;
+const DIR_WEST  = 3;
 
 let num_tile_rows = 10;
 let num_tile_cols = 10;
@@ -28,57 +41,16 @@ let tile_images = Array (NUM_TILES).fill (null);
 // stores the possible tile candidates for each cell of the board
 let tile_candidates = [];
 
-let DIR_NORTH = 0;
-let DIR_EAST  = 1;
-let DIR_SOUTH = 2;
-let DIR_WEST  = 3;
-// Keeps track of which tiles can be placed in either direction for each kind of tile
-// this method is gross and not scalable if we had many more tile types
-let tile_compatibilities = Array (NUM_TILES);
-// HAS_UP    = [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_LEFT]
-// HAS_RIGHT = [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_DOWN]
-// HAS_DOWN  = [TILE_PLUS, TILE_RIGHT, TILE_DOWN, TILE_LEFT]
-// HAS_LEFT  = [TILE_PLUS, TILE_UP, TILE_DOWN, TILE_LEFT]
-tile_compatibilities[TILE_BLANK] = [
-    [TILE_BLANK, TILE_UP], // NORTH
-    [TILE_BLANK, TILE_RIGHT], // EAST
-    [TILE_BLANK, TILE_DOWN], // SOUTH
-    [TILE_BLANK, TILE_LEFT]  // WEST
-];
-tile_compatibilities[TILE_PLUS] = [
-    [TILE_PLUS, TILE_RIGHT, TILE_DOWN, TILE_LEFT], // NORTH
-    [TILE_PLUS, TILE_UP, TILE_DOWN, TILE_LEFT], // EAST
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_LEFT], // SOUTH
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_DOWN]  // WEST
-];
-tile_compatibilities[TILE_UP] = [
-    [TILE_PLUS, TILE_RIGHT, TILE_DOWN, TILE_LEFT], // NORTH
-    [TILE_PLUS, TILE_UP, TILE_DOWN, TILE_LEFT], // EAST
-    [TILE_BLANK, TILE_DOWN], // SOUTH
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_DOWN]  // WEST
-];
-tile_compatibilities[TILE_RIGHT] = [
-    [TILE_PLUS, TILE_RIGHT, TILE_DOWN, TILE_LEFT], // NORTH
-    [TILE_PLUS, TILE_UP, TILE_DOWN, TILE_LEFT], // EAST
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_LEFT], // SOUTH
-    [TILE_BLANK, TILE_LEFT]  // WEST
-];
-tile_compatibilities[TILE_DOWN] = [
-    [TILE_BLANK, TILE_UP], // NORTH
-    [TILE_PLUS, TILE_UP, TILE_DOWN, TILE_LEFT], // EAST
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_LEFT], // SOUTH
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_DOWN]  // WEST
-];
-tile_compatibilities[TILE_LEFT] = [
-    [TILE_PLUS, TILE_RIGHT, TILE_DOWN, TILE_LEFT], // NORTH
-    [TILE_BLANK, TILE_RIGHT], // EAST
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_LEFT], // SOUTH
-    [TILE_PLUS, TILE_UP, TILE_RIGHT, TILE_DOWN]  // WEST
-];
-
-
-let num_naturally_collapsed = 0;
-let num_forced_collapsed = 0;
+// Stores the edge connection types for determining which tiles can go next to each other
+let tile_edge_types = Array (NUM_TILES);
+//                             NORTH       EAST        SOUTH       WEST
+//                             UP          RIGHT       DOWN        LEFT
+tile_edge_types[TILE_BLANK] = [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK];
+tile_edge_types[TILE_UP   ] = [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ];
+tile_edge_types[TILE_RIGHT] = [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_BLANK];
+tile_edge_types[TILE_DOWN ] = [EDGE_BLANK, EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ];
+tile_edge_types[TILE_LEFT ] = [EDGE_WIRE , EDGE_BLANK, EDGE_WIRE , EDGE_WIRE ];
+tile_edge_types[TILE_PLUS ] = [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ];
 
 //========================================================================
 
@@ -190,34 +162,34 @@ function apply_wave_function_collapse_step ()
             for (let tile_candidate = 0; tile_candidate < NUM_TILES; ++tile_candidate)
             {
                 // Ensure tile candidate agrees with NORTH tile, if exists and is filled in
-                if (i > 0 && board[i-1][j] != TILE_EMPTY && !tile_compatibilities[board[i-1][j]][DIR_SOUTH].includes (tile_candidate))
+                if (i > 0 && board[i-1][j] != TILE_EMPTY && tile_edge_types[board[i-1][j]][DIR_SOUTH] != tile_edge_types[tile_candidate][DIR_NORTH])
                 {
                     // tile candidate is not compatible with NORTH tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && !tile_compatibilities[board[i][j+1]][DIR_WEST].includes (tile_candidate))
+                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && tile_edge_types[board[i][j+1]][DIR_WEST] != tile_edge_types[tile_candidate][DIR_EAST])
                 {
                     // tile candidate is not compatible with EAST tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with SOUTH tile, if exists and is filled in
-                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && !tile_compatibilities[board[i+1][j]][DIR_NORTH].includes (tile_candidate))
+                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && tile_edge_types[board[i+1][j]][DIR_NORTH] != tile_edge_types[tile_candidate][DIR_SOUTH])
                 {
                     // tile candidate is not compatible with SOUTH tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j > 0 && board[i][j-1] != TILE_EMPTY && !tile_compatibilities[board[i][j-1]][DIR_EAST].includes (tile_candidate))
+                if (j > 0 && board[i][j-1] != TILE_EMPTY && tile_edge_types[board[i][j-1]][DIR_EAST] != tile_edge_types[tile_candidate][DIR_WEST])
                 {
                     // tile candidate is not compatible with EAST tile
                     // skip to next tile candidate
                     continue;
                 }
-                // Reaches here if tile candidate is compatible with any filled-in neighboring tiles
+                // Reaches here if tile candidate is compatible with all filled-in neighboring tiles
                 // add to candidate list
                 tile_candidates[i][j].push (tile_candidate);
             }
@@ -240,8 +212,6 @@ function apply_wave_function_collapse_step ()
             // Collapse cell
             board[i][j] = tile_candidates[i][j][0];
             has_collapsed = true;
-            // debug
-            num_naturally_collapsed++;
         }
     }
 
@@ -285,8 +255,6 @@ function apply_wave_function_collapse_step ()
             let [i, j] = random (lowest_entropy_cells);
             board[i][j] = random (tile_candidates[i][j]);
             has_collapsed = true;
-            // debug
-            num_forced_collapsed++;
         }
     }
 }
