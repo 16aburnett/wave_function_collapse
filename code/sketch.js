@@ -39,11 +39,20 @@ const DIR_EAST  = 1;
 const DIR_SOUTH = 2;
 const DIR_WEST  = 3;
 
-let num_tile_rows = 10;
+let num_tile_rows = 50;
 let num_tile_cols = num_tile_rows;
 let tile_width  = 10;
-let tile_height = 10;
+let tile_height = tile_width;
 let board = [];
+// board_history stores previous boards to be restored in the event that a
+// random move yielded an unsolvable board. In which case, we can
+// backtrack and restore the board state and try another tile.
+// if we run out of tiles, then backtrack further since none of the
+// candidates lead to valid boards.
+// if nothing to backtrack to, then it is impossible to solve with the
+// given tiles - highly unlikely.
+// each element is [<prev_board>, <i,j>, <list_of_next_candidates>]
+let board_history = [];
 
 // stores the possible tile candidates for each cell of the board
 let tile_candidates = [];
@@ -338,6 +347,14 @@ function apply_wave_function_collapse_step ()
             // Ensure cell is empty
             if (board[i][j] != TILE_EMPTY)
                 continue;
+            // Ensure cell has candidates - unsolvable if it doesnt
+            if (tile_candidates[i][j].length == 0)
+            {
+                // Board is unsolvable
+                // stop here and backtrack - no sense moving forward
+                backtrack ();
+                return;
+            }
             // Ensure cell has only 1 candidate to be able to collapse it
             if (tile_candidates[i][j].length != 1)
                 // more than one or zero candidates so we cannot collapse
@@ -351,9 +368,11 @@ function apply_wave_function_collapse_step ()
     // If no tiles were collapsed, then force a cell to collapse
     if (has_collapsed == false)
     {
-        // determine which cells have the lowest entropy (lowest num candidates)
+        // determine which cells have the lowest entropy
+        // (lowest num candidates)
         let lowest_entropy = tile_types.length;
-        let lowest_entropy_cells = []; // stores [i,j] for each cell of the lowest entropy set
+        // stores [i,j] for each cell of the lowest entropy set
+        let lowest_entropy_cells = []; 
         for (let i = 0; i < num_tile_rows && !has_collapsed; ++i)
         {
             for (let j = 0; j < num_tile_cols && !has_collapsed; ++j)
@@ -363,32 +382,57 @@ function apply_wave_function_collapse_step ()
                     continue;
                 // Ensure cell has candidates - unsolvable if it doesnt
                 if (tile_candidates[i][j].length == 0)
+                {
                     // Board is unsolvable
-                    // we could/should stop here, but just keep checking to collapse whatever else we can
-                    continue;
-                // check if entropy is lower than the current lowest entropy
+                    // stop here and backtrack - no sense moving forward
+                    backtrack ();
+                    return;
+                }
+                // check if entropy is lower than the current lowest
+                // entropy
                 let entropy = tile_candidates[i][j].length;
                 if (entropy < lowest_entropy)
                 {
                     lowest_entropy = entropy;
                     lowest_entropy_cells = [[i,j]];
                 }
-                // check if entropy is the same as the current lowest entropy
+                // check if entropy is the same as the current lowest
+                // entropy
                 else if (entropy == lowest_entropy)
                 {
                     lowest_entropy_cells.push ([i,j]);
                 }
             }
         }
-
-        // Ensure there was a cell to collapse - if not, then the board is not solvable from here
-        if (lowest_entropy_cells.length > 0)
+        // Ensure there was a cell to collapse
+        // - if not, then the board is not solvable from here
+        // not sure if this is needed as we also check for unsolvable
+        // while building the lowest entropy set
+        if (lowest_entropy_cells.length == 0)
         {
-            // Pick a random cell from the lowest entropy set and collapse it to a random candidate
-            let [i, j] = random (lowest_entropy_cells);
-            board[i][j] = random (tile_candidates[i][j]);
-            has_collapsed = true;
+            // board is not solvable
+            // backtrack and try a different random candidate
+            console.log ("No cells to collapse - backtracking");
+            backtrack ();
+            // skip to the next WFC step
+            return;
         }
+        // Pick a random cell from the lowest entropy set and
+        // collapse it to a random one of its candidates
+        let [i, j] = random (lowest_entropy_cells);
+        let randomly_chosen_tile = random (tile_candidates[i][j]);
+        board[i][j] = randomly_chosen_tile;
+        has_collapsed = true;
+        // we picked a random tile - this can lead to an unsolvable board
+        // so save the previous board state for backtracking later
+        let new_candidates = JSON.parse (JSON.stringify (tile_candidates[i][j]));
+        // remove the chosen candidate from the candidates list so we dont
+        // try the same candidate again.
+        new_candidates.splice (new_candidates.indexOf (randomly_chosen_tile), 1);
+        board_history.push ([
+            JSON.parse (JSON.stringify (board)),
+            [i,j],
+            new_candidates]);
     }
 }
 
@@ -403,7 +447,8 @@ function is_board_filled_in ()
         {
             // Ensure cell is filled in
             if (board[i][j] == TILE_EMPTY)
-                // Found a tile that is still empty, board is not filled in
+                // Found a tile that is still empty,
+                // board is not filled in
                 return false;
         }
     }
@@ -435,4 +480,46 @@ function do_edge_types_match (edge_type_a, edge_type_b)
     }
     // did not find a different char - all chars are same - strings match
     return true;
+}
+
+//========================================================================
+
+// This restores the previous board state that was saved when we made a
+// random move. Use this as soon as something unsolvable shows up like
+// zero candidates for a cell. This allows us to try all possible
+// permutations until we land on a finished board.
+function backtrack ()
+{
+    console.log ("Backtracking")
+    // Ensure something to backtrack to
+    if (board_history.length == 0)
+    {
+        // not possible to solve - this is highly unlikely
+        console.log ("Tried all possible permutations - not solvable with this tileset");
+        return;
+    }
+    let [previous_state, [i,j], next_candidates] = board_history[board_history.length-1];
+    // Ensure previous state has another candidate to try
+    if (next_candidates.length == 0)
+    {
+        // previous state has no path forward
+        // remove this saved state and backtracking further
+        // no sense restoring this saved state as it will fail
+        console.log ("no more candidates, backtracking further");
+        board_history.pop ();
+        return;
+    }
+    // restore board state
+    console.log ("restoring previous board state");
+    // *Using JSON to do a deep copy of the board state
+    // replace current board with previous board
+    board = JSON.parse (JSON.stringify (previous_state));
+    // try a different tile
+    let new_tile = random (next_candidates);
+    console.log ("trying new tile: ", new_tile);
+    board[i][j] = new_tile;
+    // remove tile from candidates list so we do not try it again in the
+    // future, since that would cause an infinite loop
+    next_candidates.splice (next_candidates.indexOf (new_tile), 1);
+
 }
