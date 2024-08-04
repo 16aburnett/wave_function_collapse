@@ -13,8 +13,25 @@ const TILE_EMPTY = -1;
 // Enumeration of the different types of tile edge connections
 // Only blank edges can match with blank edges
 // and only wire edges can match with wire edges
-const EDGE_BLANK = 0;
-const EDGE_WIRE  = 1;
+const EDGE_BLANK = "0";
+const EDGE_WIRE  = "1";
+// Circuit Tile edge types
+// This idea of using a coded string to represent matching sides
+// comes from an issue on the Coding Train's github:
+// https://github.com/CodingTrain/Wave-Function-Collapse/issues/16
+// This solves the problem with asymmetric tiles where we do not want
+// asymmetric tiles matching with themselves.
+// a code of "300" would only be able to match with its reverse "003"
+// so it cannot match itself. But a code like "111" can match itself.
+// Solving a symmetry problem with symmetry!!
+const EDGE_CIRCUIT_SUBSTRATE        = "000";
+const EDGE_CIRCUIT_COMPONENT        = "111";
+const EDGE_CIRCUIT_CORNER_LEFT      = "200";
+const EDGE_CIRCUIT_CORNER_DOWN      = "300";
+const EDGE_CIRCUIT_CONNECTION_RIGHT = "002";
+const EDGE_CIRCUIT_CONNECTION_LEFT  = "003";
+const EDGE_CIRCUIT_GREEN_TRACK      = "444";
+const EDGE_CIRCUIT_GREY_WIRE        = "555";
 
 // Enumeration of orthogonally neighboring cells
 const DIR_NORTH = 0;
@@ -23,10 +40,10 @@ const DIR_SOUTH = 2;
 const DIR_WEST  = 3;
 
 let num_tile_rows = 10;
-let num_tile_cols = 10;
-let board = [];
+let num_tile_cols = num_tile_rows;
 let tile_width  = 10;
 let tile_height = 10;
+let board = [];
 
 // stores the possible tile candidates for each cell of the board
 let tile_candidates = [];
@@ -39,20 +56,93 @@ let tile_types = [];
 
 // preload runs before setup
 function preload () {
+    // Basic Tiles
+    // tile_types.push (new Tile (
+    //     loadImage ('resources/blank.png'),
+    //     0,
+    //     [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
+    // ));
+    // tile_types.push (new Tile (
+    //     loadImage ('resources/up.png'),
+    //     0,
+    //     [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
+    // ));
+    // tile_types.push (new Tile (
+    //     loadImage ('resources/plus.png'),
+    //     0,
+    //     [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
+    // ));
+
+    // Circuit Tiles
     tile_types.push (new Tile (
-        loadImage ('resources/blank.png'),
+        loadImage ('resources/Circuit/bridge.png'),
         0,
-        [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE]
     ));
     tile_types.push (new Tile (
-        loadImage ('resources/up.png'),
+        loadImage ('resources/Circuit/component.png'),
         0,
-        [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
+        [EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT]
     ));
     tile_types.push (new Tile (
-        loadImage ('resources/plus.png'),
+        loadImage ('resources/Circuit/connection.png'),
         0,
-        [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_CONNECTION_RIGHT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_CONNECTION_LEFT]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/corner.png'),
+        0,
+        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_CORNER_DOWN, EDGE_CIRCUIT_CORNER_LEFT]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/dskew.png'),
+        0,
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/skew.png'),
+        0,
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/substrate.png'),
+        0,
+        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/t.png'),
+        0,
+        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/track.png'),
+        0,
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/transition.png'),
+        0,
+        [EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/turn.png'),
+        0,
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/viad.png'),
+        0,
+        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/vias.png'),
+        0,
+        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+    ));
+    tile_types.push (new Tile (
+        loadImage ('resources/Circuit/wire.png'),
+        0,
+        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE]
     ));
 }
 
@@ -90,9 +180,9 @@ function setup ()
         // determine if rotating this tile would result in a different image
         // we know it will be the same image if the all the edge types are the same
         // since rotating it will not create a different edge type pattern
-        if (tile_types[t].edge_types[0] == tile_types[t].edge_types[1] &&
-            tile_types[t].edge_types[1] == tile_types[t].edge_types[2] &&
-            tile_types[t].edge_types[2] == tile_types[t].edge_types[3])
+        if (tile_types[t].edge_types[0] === tile_types[t].edge_types[1] &&
+            tile_types[t].edge_types[1] === tile_types[t].edge_types[2] &&
+            tile_types[t].edge_types[2] === tile_types[t].edge_types[3])
         {
             // all edge types are the same
             // assume this is perfectly symmetrical so no need to rotate
@@ -205,28 +295,28 @@ function apply_wave_function_collapse_step ()
             for (let tile_candidate = 0; tile_candidate < tile_types.length; ++tile_candidate)
             {
                 // Ensure tile candidate agrees with NORTH tile, if exists and is filled in
-                if (i > 0 && board[i-1][j] != TILE_EMPTY && tile_types[board[i-1][j]].edge_types[DIR_SOUTH] != tile_types[tile_candidate].edge_types[DIR_NORTH])
+                if (i > 0 && board[i-1][j] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i-1][j]].edge_types[DIR_SOUTH], tile_types[tile_candidate].edge_types[DIR_NORTH]))
                 {
                     // tile candidate is not compatible with NORTH tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && tile_types[board[i][j+1]].edge_types[DIR_WEST] != tile_types[tile_candidate].edge_types[DIR_EAST])
+                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i][j+1]].edge_types[DIR_WEST], tile_types[tile_candidate].edge_types[DIR_EAST]))
                 {
                     // tile candidate is not compatible with EAST tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with SOUTH tile, if exists and is filled in
-                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && tile_types[board[i+1][j]].edge_types[DIR_NORTH] != tile_types[tile_candidate].edge_types[DIR_SOUTH])
+                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i+1][j]].edge_types[DIR_NORTH], tile_types[tile_candidate].edge_types[DIR_SOUTH]))
                 {
                     // tile candidate is not compatible with SOUTH tile
                     // skip to next tile candidate
                     continue;
                 }
                 // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j > 0 && board[i][j-1] != TILE_EMPTY && tile_types[board[i][j-1]].edge_types[DIR_EAST] != tile_types[tile_candidate].edge_types[DIR_WEST])
+                if (j > 0 && board[i][j-1] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i][j-1]].edge_types[DIR_EAST], tile_types[tile_candidate].edge_types[DIR_WEST]))
                 {
                     // tile candidate is not compatible with EAST tile
                     // skip to next tile candidate
@@ -318,5 +408,31 @@ function is_board_filled_in ()
         }
     }
     // Did not find any empty cells, so the board is filled in
+    return true;
+}
+
+//========================================================================
+
+// checks if two edge type codes match
+// Edge type codes match if code string A matches the reverse of code
+// string B. Reversing the string is a solution to asymmetric sides
+// matching themselves and looking visually wrong.
+function do_edge_types_match (edge_type_a, edge_type_b)
+{
+    // Ensure string lengths match - otherwise strings will not match
+    if (edge_type_a.length != edge_type_b.length)
+            return false;
+    let edge_type_b_reversed = edge_type_b.split ('').reverse (). join ("");
+    // Check each char to see if strings match
+    for (let i = 0; i < edge_type_a.length; ++i)
+    {
+        if (edge_type_a[i] !== edge_type_b_reversed[i])
+        {
+            // found a char that does not match!
+            // codes do not match
+            return false;
+        }
+    }
+    // did not find a different char - all chars are same - strings match
     return true;
 }
