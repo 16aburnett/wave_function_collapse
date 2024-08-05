@@ -8,6 +8,67 @@
         <script type="text/javascript" src="sketch.js"></script>
     </head>
     <body>
+        <div id="pageHeader">
+            <div id="pageHeaderTitle">
+                <h1>Wave Function Collapse</h1>
+            </div>
+        </div>
+        <div id="controls">
+            <table id="controls_table">
+                <tr>
+                    <td>
+                        <label for="tileset">Tileset:</label>
+                    </td>
+                    <td>
+                        <select name="tileset" id="tileset">
+                            <option value="Basic Tiles">Basic Tiles</option>
+                            <option value="Circuit">Circuit</option>
+                        </select>
+                    </td>
+                    <td id="tileset_display">
+                        <!-- tileset preview here -->
+                    </td>
+                </tr>
+                <!-- rows/cols slider 2-100 -->
+                <tr>
+                    <td>
+                        <label for="grid_size">Grid size:</label>
+                    </td>
+                    <td>
+                        <!-- TODO: Optimize WFC so that we can increase >50x50 -->
+                        <input type="range" min="1" max="50" step="1" value="10" class="slider" id="grid_size_slider">
+                    </td>
+                    <td>
+                        <p id="grid_size_display"></p>
+                    </td>
+                </tr>
+                <!-- solve speed - controls framerate - 1-30 fps and instant -->
+                <tr>
+                    <td>
+                        <label for="grid_size">Solve speed:</label>
+                    </td>
+                    <td>
+                        <input type="range" min="1" max="30" step="1" value="30" class="slider" id="solve_speed_slider">
+                    </td>
+                    <td>
+                        <p id="solve_speed_display"></p>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label>Generate board using <br/>Wave Function Collapse</button>
+                    </td>
+                    <td>
+                        <button type="button" onclick="start_generating_board ()">Generate!</button>
+                    </td>
+                    <td>
 
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id="canvasDiv">
+            <!-- canvas gets placed here -->
+        </div>
     </body>
-  </html>
+</html>

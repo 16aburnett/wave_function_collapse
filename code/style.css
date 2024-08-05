@@ -1,11 +1,141 @@
 
 
 body {
-    background-color: #fff;
-    color: #000;
+    background-color: #121930;
+    color: #ffffffde;
     font-family:Arial, Helvetica, sans-serif;
     margin:0;
     padding:0;
     width: 100%;
     height: 100%;
+    font-size: 24px;
+}
+
+#pageHeader {
+    background-color : #2195f300;
+    width: 100%;
+    height: 75px;
+    display: block;
+}
+
+#pageHeaderTitle {
+    /* background-color: lime; */
+    float: left;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+#controls {
+    /* background-color: orange; */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    padding: 15;
+}
+
+#controls_table {
+    /* border: solid 2px #ffffff30; */
+    padding: 0;
+    width: 75%;
+}
+#controls_table tr {
+    padding: 0;
+}
+#controls_table td {
+    /* border: solid 2px #ffffff30; */
+    padding: 7px;
+    width: 30%;
+}
+
+label {
+    /* font-size: 24px; */
+}
+
+select {
+    border: none;
+    border-radius: 10px;
+    background-color: #2196F3;
+    padding: 5px;
+    text-align: center;
+    /* font-size: 24px; */
+    height: 30px;
+    width: 100%;
+    cursor: pointer;
+    margin: 5;
+    opacity: 0.7;
+}
+select:hover {
+    opacity: 1;
+}
+
+button {
+    border: none;
+    border-radius: 10px;
+    background-color: #2196F3;
+    padding: 5px;
+    text-align: center;
+    /* font-size: 24px; */
+    height: 30px;
+    width: 100%;
+    cursor: pointer;
+    margin: 5;
+    opacity: 0.7;
+}
+button:hover {
+    opacity: 1;
+}
+
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 15px;
+    background: #d3d3d3;
+    border-radius: 10px;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    background: #2196F3;
+    border-radius: 25px;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: #2196F3;
+    border-radius: 25px;
+    cursor: pointer;
+}
+
+
+
+
+
+#canvasDiv {
+    /* background-color: yellow; */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: auto;
+    float:left;
+    margin: 0;
 }

@@ -59,97 +59,130 @@ let tile_candidates = [];
 
 // stores static data representing different tile images
 // and rotated variants of nonsymmetric tiles
+// for the current working tileset
 let tile_types = [];
+
+// UI Elements
+let input_select_tileset;
+let input_display_tileset; // element where we can show the tileset images
+let input_slider_grid_size;
+let input_display_grid_size; // element that displays the grid size
+let input_slider_solve_speed;
+let input_display_solve_speed; // element that displays the solve speed
+
+// Stores different tilesets, keyed by a tileset name
+let tilesets = {};
+
+let should_solve = false;
 
 //========================================================================
 
 // preload runs before setup
 function preload () {
     // Basic Tiles
-    // tile_types.push (new Tile (
-    //     loadImage ('resources/blank.png'),
-    //     0,
-    //     [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
-    // ));
-    // tile_types.push (new Tile (
-    //     loadImage ('resources/up.png'),
-    //     0,
-    //     [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
-    // ));
-    // tile_types.push (new Tile (
-    //     loadImage ('resources/plus.png'),
-    //     0,
-    //     [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
-    // ));
+    tilesets["Basic Tiles"] = [];
+    tilesets["Basic Tiles"].push (new Tile (
+        loadImage ('resources/Basic_Tiles/blank.png'),
+        'resources/Basic_Tiles/blank.png',
+        0,
+        [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
+    ));
+    tilesets["Basic Tiles"].push (new Tile (
+        loadImage ('resources/Basic_Tiles/up.png'),
+        'resources/Basic_Tiles/up.png',
+        0,
+        [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
+    ));
+    tilesets["Basic Tiles"].push (new Tile (
+        loadImage ('resources/Basic_Tiles/plus.png'),
+        'resources/Basic_Tiles/plus.png',
+        0,
+        [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
+    ));
 
     // Circuit Tiles
-    tile_types.push (new Tile (
+    tilesets["Circuit"] = [];
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/bridge.png'),
+        'resources/Circuit/bridge.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/component.png'),
+        'resources/Circuit/component.png',
         0,
         [EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/connection.png'),
+        'resources/Circuit/connection.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_CONNECTION_RIGHT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_CONNECTION_LEFT]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/corner.png'),
+        'resources/Circuit/corner.png',
         0,
         [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_CORNER_DOWN, EDGE_CIRCUIT_CORNER_LEFT]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/dskew.png'),
+        'resources/Circuit/dskew.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/skew.png'),
+        'resources/Circuit/skew.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/substrate.png'),
+        'resources/Circuit/substrate.png',
         0,
         [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/t.png'),
+        'resources/Circuit/t.png',
         0,
         [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/track.png'),
+        'resources/Circuit/track.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/transition.png'),
+        'resources/Circuit/transition.png',
         0,
         [EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/turn.png'),
+        'resources/Circuit/turn.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/viad.png'),
+        'resources/Circuit/viad.png',
         0,
         [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/vias.png'),
+        'resources/Circuit/vias.png',
         0,
         [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
     ));
-    tile_types.push (new Tile (
+    tilesets["Circuit"].push (new Tile (
         loadImage ('resources/Circuit/wire.png'),
+        'resources/Circuit/wire.png',
         0,
         [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE]
     ));
@@ -161,10 +194,12 @@ function setup ()
 {
     // Create a full screen square canvas
     // we want the canvas to be square so use whatever is the more constrained dim
-    let smallestDimension = min (windowWidth, windowHeight);
-    createCanvas (smallestDimension, smallestDimension);
+    let smallestDimension = min (windowWidth * .75, windowHeight * .75);
+    let canvas = createCanvas (smallestDimension, smallestDimension);
+    canvas.parent ("#canvasDiv");
     tile_width = smallestDimension / num_tile_cols;
     tile_height = smallestDimension / num_tile_rows;
+
     angleMode(DEGREES);
 
     // Initialize the board with blank tiles
@@ -180,48 +215,116 @@ function setup ()
         }
     }
 
-    // Generate rotated versions of tiles
+    // Generate rotated versions of tiles for each tileset
     // 1. determine if rotating tile would result in a different image
     // 2. if so, then rotate it four ways and add each rotation as a new tile
     // iterate backwards since we are possibly adding to tile_types
-    for (let t = tile_types.length - 1; t >= 0; --t)
+    for (const [tileset_name, tileset] of Object.entries (tilesets))
     {
-        // determine if rotating this tile would result in a different image
-        // we know it will be the same image if the all the edge types are the same
-        // since rotating it will not create a different edge type pattern
-        if (tile_types[t].edge_types[0] === tile_types[t].edge_types[1] &&
-            tile_types[t].edge_types[1] === tile_types[t].edge_types[2] &&
-            tile_types[t].edge_types[2] === tile_types[t].edge_types[3])
+        for (let t = tileset.length - 1; t >= 0; --t)
         {
-            // all edge types are the same
-            // assume this is perfectly symmetrical so no need to rotate
-            continue;
+            // determine if rotating this tile would result in a different image
+            // we know it will be the same image if the all the edge types are the same
+            // since rotating it will not create a different edge type pattern
+            if (tileset[t].edge_types[0] === tileset[t].edge_types[1] &&
+                tileset[t].edge_types[1] === tileset[t].edge_types[2] &&
+                tileset[t].edge_types[2] === tileset[t].edge_types[3])
+            {
+                // all edge types are the same
+                // assume this is perfectly symmetrical so no need to rotate
+                continue;
+            }
+            // Image can be rotated
+            // Create 0, 90, 180, 270 degree versions (0 is already done)
+            // 90 degrees means vector pointing up changes to pointing right
+            //   ^
+            //   |   ->  ---->
+            //   |
+            // 90 degrees (1 turn)
+            tileset.push (new Tile (
+                tileset[t].image,
+                tileset[t].image_path,
+                90,
+                [
+                    tileset[t].edge_types[DIR_WEST],
+                    tileset[t].edge_types[DIR_NORTH],
+                    tileset[t].edge_types[DIR_EAST],
+                    tileset[t].edge_types[DIR_SOUTH]
+                ]
+            ));
+            // 180 degrees (2 turns)
+            tileset.push (new Tile (
+                tileset[t].image,
+                tileset[t].image_path,
+                180,
+                [
+                    tileset[t].edge_types[DIR_SOUTH],
+                    tileset[t].edge_types[DIR_WEST],
+                    tileset[t].edge_types[DIR_NORTH],
+                    tileset[t].edge_types[DIR_EAST]
+                ]
+            ));
+            // 270 degrees (3 turns)
+            tileset.push (new Tile (
+                tileset[t].image,
+                tileset[t].image_path,
+                270,
+                [
+                    tileset[t].edge_types[DIR_EAST],
+                    tileset[t].edge_types[DIR_SOUTH],
+                    tileset[t].edge_types[DIR_WEST],
+                    tileset[t].edge_types[DIR_NORTH]
+                ]
+            ));
         }
-        // Image can be rotated
-        // Create 0, 90, 180, 270 degree versions (0 is already done)
-        // 90 degrees means vector pointing up changes to pointing right
-        //   ^
-        //   |   ->  ---->
-        //   |
-        // 90 degrees (1 turn)
-        tile_types.push (new Tile (tile_types[t].image, 90, [
-            tile_types[t].edge_types[DIR_WEST],
-            tile_types[t].edge_types[DIR_NORTH],
-            tile_types[t].edge_types[DIR_EAST],
-            tile_types[t].edge_types[DIR_SOUTH]]));
-        // 180 degrees (2 turns)
-        tile_types.push (new Tile (tile_types[t].image, 180, [
-            tile_types[t].edge_types[DIR_SOUTH],
-            tile_types[t].edge_types[DIR_WEST],
-            tile_types[t].edge_types[DIR_NORTH],
-            tile_types[t].edge_types[DIR_EAST]]));
-        // 270 degrees (3 turns)
-        tile_types.push (new Tile (tile_types[t].image, 270, [
-            tile_types[t].edge_types[DIR_EAST],
-            tile_types[t].edge_types[DIR_SOUTH],
-            tile_types[t].edge_types[DIR_WEST],
-            tile_types[t].edge_types[DIR_NORTH]]));
     }
+
+    // UI Elements
+    input_select_tileset = document.getElementById ("tileset");
+    input_display_tileset = document.getElementById ("tileset_display");
+    input_slider_grid_size = document.getElementById ("grid_size_slider");
+    input_display_grid_size = document.getElementById ("grid_size_display");
+    input_slider_solve_speed = document.getElementById ("solve_speed_slider");
+    input_display_solve_speed = document.getElementById ("solve_speed_display");
+    input_select_tileset.oninput = function (e)
+    {
+        // Add tile images next to the select to preview the tileset
+        // Clear previous tileset
+        input_display_tileset.innerHTML = "";
+        // we only want to show unique tiles so gather non-rotated tiles
+        for (let ti = 0 ; ti < tilesets[input_select_tileset.value].length; ++ti)
+        {
+            // Ensure tile is not rotated
+            if (tilesets[input_select_tileset.value][ti].image_rotation == 0)
+            {
+                let tile_image = document.createElement ("img");
+                tile_image.src = tilesets[input_select_tileset.value][ti].image_path;
+                input_display_tileset.append (tile_image);
+            }
+        }
+    }
+    // initially call function so we update display
+    input_select_tileset.oninput ();
+
+    input_slider_grid_size.oninput = function (e)
+    {
+        input_display_grid_size.innerHTML = this.value + " x " + this.value;
+    }
+    // initially call function so we update display
+    input_slider_grid_size.oninput ();
+
+    input_slider_solve_speed.oninput = function (e)
+    {
+        input_display_solve_speed.innerHTML = this.value;
+        frameRate (parseInt (this.value));
+        if (this.value == 31)
+        {
+            input_display_solve_speed.innerHTML = "instant";
+            frameRate (60);
+        }
+    }
+    // initially call function so we update display
+    input_slider_solve_speed.oninput ();
 
 }
 
@@ -232,7 +335,8 @@ function draw ()
     // frameRate (1);
     background ("#eee");
 
-    apply_wave_function_collapse_step ();
+    if (should_solve)
+        apply_wave_function_collapse_step ();
 
     // Draw tiles
     for (let i = 0; i < num_tile_rows; ++i)
@@ -300,11 +404,54 @@ function draw ()
 function windowResized ()
 {
     // we want the canvas to be square so use whatever is the more constrained dim
-    let smallestDimension = min (windowWidth, windowHeight);
+    let smallestDimension = min (windowWidth * .75, windowHeight * .75);
     resizeCanvas(smallestDimension, smallestDimension);
     // Resize tiles
     tile_width = smallestDimension / num_tile_cols;
     tile_height = smallestDimension / num_tile_rows;
+}
+
+//========================================================================
+
+// User button
+// takes settings from user's fields and starts generating a board
+function start_generating_board ()
+{
+    console.log ("starting board generation with Wave Function Collapse!");
+    // Set tileset
+    tile_types = tilesets[input_select_tileset.value];
+
+    // Set board size + initialize board to empty
+    board = [];
+    num_tile_cols = parseInt (input_slider_grid_size.value);
+    num_tile_rows = parseInt (input_slider_grid_size.value);
+    let smallestDimension = min (windowWidth * .75, windowHeight * .75);
+    tile_width = smallestDimension / num_tile_cols;
+    tile_height = smallestDimension / num_tile_rows;
+    // Initialize the board with blank tiles
+    for (let i = 0; i < num_tile_rows; ++i)
+    {
+        board.push ([]);
+        tile_candidates.push ([]);
+        for (let j = 0; j < num_tile_cols; ++j)
+        {
+            board[i].push (TILE_EMPTY);
+            tile_candidates[i].push ([]);
+        }
+    }
+
+    // Set solve speed
+    if (parseInt (input_slider_solve_speed.value) == 31)
+        // Instant solve - aka all steps run in a single frame
+        // this may be very slow
+        // **NOT IMPLEMENTED YET
+        frameRate (30);
+    else
+        frameRate (parseInt (input_slider_solve_speed.value));
+
+    // Start solving
+    should_solve = true;
+
 }
 
 //========================================================================
@@ -319,7 +466,8 @@ function windowResized ()
 function apply_wave_function_collapse_step ()
 {
     // Ensure board is not already filled in
-    if (is_board_filled_in ()) return;
+    if (is_board_filled_in ())
+        return;
     // Determine tile candidates for each cell
     for (let i = 0; i < num_tile_rows; ++i)
     {

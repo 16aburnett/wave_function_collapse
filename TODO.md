@@ -13,7 +13,7 @@
 - add a Sudoku tileset?
     - although will be more complex as it needs to check row,col,box instead of just immediate neighbors
     - maybe adapt WFC to just have a is_valid_tile function that can be implemented differently depending on tile set - might not just be applicable to Sudoku? hmm. interesting.
-- instead of drawing a black tile in a non-filled-in cell - draw the possible candidate tiles
+- [done] instead of drawing a black tile in a non-filled-in cell - draw the possible candidate tiles
 
 
 

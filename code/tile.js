@@ -10,10 +10,11 @@
 
 class Tile
 {
-    constructor (image=null, image_rotation=0, edge_types=[TILE_EMPTY, TILE_EMPTY, TILE_EMPTY, TILE_EMPTY])
+    constructor (image=null, image_path="", image_rotation=0, edge_types=[TILE_EMPTY, TILE_EMPTY, TILE_EMPTY, TILE_EMPTY])
     {
         // Initially starts as null, but needs to be set in preload()
         this.image = image;
+        this.image_path = image_path;
         // Stores the intended rotation of the image to define this tile
         // different tiles can use the same image but be different rotations
         this.image_rotation = image_rotation;
