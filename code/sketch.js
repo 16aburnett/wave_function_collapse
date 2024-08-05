@@ -39,7 +39,7 @@ const DIR_EAST  = 1;
 const DIR_SOUTH = 2;
 const DIR_WEST  = 3;
 
-let num_tile_rows = 50;
+let num_tile_rows = 16;
 let num_tile_cols = num_tile_rows;
 let tile_width  = 10;
 let tile_height = tile_width;
@@ -229,6 +229,7 @@ function setup ()
 
 function draw ()
 {
+    // frameRate (1);
     background ("#eee");
 
     apply_wave_function_collapse_step ();
@@ -246,18 +247,49 @@ function draw ()
                 let y = i * tile_height;
                 fill (0);
                 rect (x, y, tile_width, tile_height);
+                // Draw a tiny version of each tile candidate for this cell
+                // Since we want to arrange the tiles in a square
+                // we need to fit the tiles in a grid of the
+                // next nearest square root.
+                let tile_candidate_rows = Math.ceil (Math.sqrt (tile_types.length));
+                let tile_candidate_cols = tile_candidate_rows;
+                let tile_candidate_padding = tile_width / tile_candidate_cols * .1;
+                let tile_candidate_width  = tile_width  / tile_candidate_cols - tile_candidate_padding * 2;
+                let tile_candidate_height = tile_height / tile_candidate_rows - tile_candidate_padding * 2;
+                for (let ci = 0; ci < tile_candidate_rows; ++ci)
+                {
+                    for (let cj = 0; cj < tile_candidate_cols; ++cj)
+                    {
+                        // Ensure within bounds - not every cell will have all possibilities
+                        if ((ci * tile_candidate_cols + cj) >= tile_candidates[i][j].length)
+                            continue;
+                        // Draw tile candidate
+                        let tile_candidate = tile_candidates[i][j][ci * tile_candidate_cols + cj];
+                        let cx = x + cj * tile_candidate_width + (cj+1) * tile_candidate_padding;
+                        let cy = y + ci * tile_candidate_height + (ci+1) * tile_candidate_padding;
+                        push ();
+                        translate (cx + tile_candidate_width/2, cy + tile_candidate_height/2);
+                        imageMode(CENTER);
+                        rotate (tile_types[tile_candidate].image_rotation);
+                        image (tile_types[tile_candidate].image, 0, 0, tile_candidate_width, tile_candidate_height);
+                        pop ();
+                    }
+                }
                 continue;
             }
             // Draw tile
             let x = j * tile_width;
             let y = i * tile_height;
             push ();
-            stroke (0);
             translate (x + tile_width/2, y + tile_height/2);
             imageMode(CENTER);
             rotate (tile_types[board[i][j]].image_rotation);
             image (tile_types[board[i][j]].image, 0, 0, tile_width, tile_height);
             pop ();
+            // Tile borders lines for debug
+            // noFill ();
+            // stroke (0);
+            // rect (x, y, tile_width, tile_height);
         }
     }
 
