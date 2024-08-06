@@ -74,6 +74,11 @@ select:hover {
     opacity: 1;
 }
 
+.tile {
+    width: 16px;
+    height: 16px;
+}
+
 button {
     border: none;
     border-radius: 10px;

@@ -10,12 +10,12 @@
 // Enumeration of the different types of tiles
 const TILE_EMPTY = -1;
 
-// Enumeration of the different types of tile edge connections
+// Enumeration of the different types of tile edge socket connections
 // Only blank edges can match with blank edges
 // and only wire edges can match with wire edges
 const EDGE_BLANK = "0";
 const EDGE_WIRE  = "1";
-// Circuit Tile edge types
+// Circuit Tile edge sockets
 // This idea of using a coded string to represent matching sides
 // comes from an issue on the Coding Train's github:
 // https://github.com/CodingTrain/Wave-Function-Collapse/issues/16
@@ -32,6 +32,8 @@ const EDGE_CIRCUIT_CONNECTION_RIGHT = "002";
 const EDGE_CIRCUIT_CONNECTION_LEFT  = "200";
 const EDGE_CIRCUIT_GREEN_TRACK      = "444";
 const EDGE_CIRCUIT_GREY_WIRE        = "555";
+// for tilesets that dont use edge sockets
+const EDGE_NONE = "000";
 
 // Enumeration of orthogonally neighboring cells
 const DIR_NORTH = 0;
@@ -57,11 +59,6 @@ let board_history = [];
 // stores the possible tile candidates for each cell of the board
 let tile_candidates = [];
 
-// stores static data representing different tile images
-// and rotated variants of nonsymmetric tiles
-// for the current working tileset
-let tile_types = [];
-
 // UI Elements
 let input_select_tileset;
 let input_display_tileset; // element where we can show the tileset images
@@ -75,117 +72,294 @@ let tilesets = {};
 
 let should_solve = false;
 
+// The current tileset name
+// Used for looking up static data on the current tileset
+// like the is_valid function
+let current_tileset_name = "Basic Tiles";
+
 //========================================================================
 
 // preload runs before setup
 function preload () {
     // Basic Tiles
-    tilesets["Basic Tiles"] = [];
-    tilesets["Basic Tiles"].push (new Tile (
-        loadImage ('resources/Basic_Tiles/blank.png'),
-        'resources/Basic_Tiles/blank.png',
-        0,
-        [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
-    ));
-    tilesets["Basic Tiles"].push (new Tile (
-        loadImage ('resources/Basic_Tiles/up.png'),
-        'resources/Basic_Tiles/up.png',
-        0,
-        [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
-    ));
-    tilesets["Basic Tiles"].push (new Tile (
-        loadImage ('resources/Basic_Tiles/plus.png'),
-        'resources/Basic_Tiles/plus.png',
-        0,
-        [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
-    ));
+    tilesets["Basic Tiles"] = new TileSet (
+        [
+            new Tile (
+                loadImage ('resources/Basic_Tiles/blank.png'),
+                'resources/Basic_Tiles/blank.png',
+                0,
+                [EDGE_BLANK, EDGE_BLANK, EDGE_BLANK, EDGE_BLANK]
+            ),
+            new Tile (
+                loadImage ('resources/Basic_Tiles/up.png'),
+                'resources/Basic_Tiles/up.png',
+                0,
+                [EDGE_WIRE , EDGE_WIRE , EDGE_BLANK, EDGE_WIRE ]
+            ),
+            new Tile (
+                loadImage ('resources/Basic_Tiles/plus.png'),
+                'resources/Basic_Tiles/plus.png',
+                0,
+                [EDGE_WIRE , EDGE_WIRE , EDGE_WIRE , EDGE_WIRE ]
+            )
+        ],
+        is_valid_edge_socket_checks
+    );
 
     // Circuit Tiles
-    tilesets["Circuit"] = [];
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/bridge.png'),
-        'resources/Circuit/bridge.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/component.png'),
-        'resources/Circuit/component.png',
-        0,
-        [EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/connection.png'),
-        'resources/Circuit/connection.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_CONNECTION_RIGHT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_CONNECTION_LEFT]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/corner.png'),
-        'resources/Circuit/corner.png',
-        0,
-        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_CORNER_DOWN, EDGE_CIRCUIT_CORNER_LEFT]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/dskew.png'),
-        'resources/Circuit/dskew.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/skew.png'),
-        'resources/Circuit/skew.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/substrate.png'),
-        'resources/Circuit/substrate.png',
-        0,
-        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/t.png'),
-        'resources/Circuit/t.png',
-        0,
-        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/track.png'),
-        'resources/Circuit/track.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/transition.png'),
-        'resources/Circuit/transition.png',
-        0,
-        [EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/turn.png'),
-        'resources/Circuit/turn.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/viad.png'),
-        'resources/Circuit/viad.png',
-        0,
-        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/vias.png'),
-        'resources/Circuit/vias.png',
-        0,
-        [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
-    ));
-    tilesets["Circuit"].push (new Tile (
-        loadImage ('resources/Circuit/wire.png'),
-        'resources/Circuit/wire.png',
-        0,
-        [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE]
-    ));
+    tilesets["Circuit"] = new TileSet (
+        [
+            new Tile (
+                loadImage ('resources/Circuit/bridge.png'),
+                'resources/Circuit/bridge.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREY_WIRE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/component.png'),
+                'resources/Circuit/component.png',
+                0,
+                [EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_COMPONENT]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/connection.png'),
+                'resources/Circuit/connection.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_CONNECTION_RIGHT, EDGE_CIRCUIT_COMPONENT, EDGE_CIRCUIT_CONNECTION_LEFT]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/corner.png'),
+                'resources/Circuit/corner.png',
+                0,
+                [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_CORNER_DOWN, EDGE_CIRCUIT_CORNER_LEFT]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/dskew.png'),
+                'resources/Circuit/dskew.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/skew.png'),
+                'resources/Circuit/skew.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/substrate.png'),
+                'resources/Circuit/substrate.png',
+                0,
+                [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/t.png'),
+                'resources/Circuit/t.png',
+                0,
+                [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/track.png'),
+                'resources/Circuit/track.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/transition.png'),
+                'resources/Circuit/transition.png',
+                0,
+                [EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/turn.png'),
+                'resources/Circuit/turn.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/viad.png'),
+                'resources/Circuit/viad.png',
+                0,
+                [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREEN_TRACK]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/vias.png'),
+                'resources/Circuit/vias.png',
+                0,
+                [EDGE_CIRCUIT_GREEN_TRACK, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_SUBSTRATE]
+            ),
+            new Tile (
+                loadImage ('resources/Circuit/wire.png'),
+                'resources/Circuit/wire.png',
+                0,
+                [EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE, EDGE_CIRCUIT_SUBSTRATE, EDGE_CIRCUIT_GREY_WIRE]
+            ),
+        ],
+        is_valid_edge_socket_checks
+    );
+
+    // Sudoku Tiles
+    tilesets["Sudoku"] = new TileSet (
+        [
+            new Tile (
+                loadImage ('resources/Sudoku/1.png'),
+                'resources/Sudoku/1.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/2.png'),
+                'resources/Sudoku/2.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/3.png'),
+                'resources/Sudoku/3.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/4.png'),
+                'resources/Sudoku/4.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/5.png'),
+                'resources/Sudoku/5.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/6.png'),
+                'resources/Sudoku/6.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/7.png'),
+                'resources/Sudoku/7.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/8.png'),
+                'resources/Sudoku/8.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/9.png'),
+                'resources/Sudoku/9.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+        ],
+        is_valid_sudoku_constraints
+    );
+
+    // Hex Sudoku Tiles
+    tilesets["Hexdoku"] = new TileSet (
+        [
+            new Tile (
+                loadImage ('resources/Sudoku/0.png'),
+                'resources/Sudoku/0.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/1.png'),
+                'resources/Sudoku/1.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/2.png'),
+                'resources/Sudoku/2.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/3.png'),
+                'resources/Sudoku/3.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/4.png'),
+                'resources/Sudoku/4.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/5.png'),
+                'resources/Sudoku/5.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/6.png'),
+                'resources/Sudoku/6.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/7.png'),
+                'resources/Sudoku/7.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/8.png'),
+                'resources/Sudoku/8.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/9.png'),
+                'resources/Sudoku/9.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/a.png'),
+                'resources/Sudoku/a.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/b.png'),
+                'resources/Sudoku/b.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/c.png'),
+                'resources/Sudoku/c.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/d.png'),
+                'resources/Sudoku/d.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/e.png'),
+                'resources/Sudoku/e.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            ),
+            new Tile (
+                loadImage ('resources/Sudoku/f.png'),
+                'resources/Sudoku/f.png',
+                0,
+                [EDGE_NONE, EDGE_NONE, EDGE_NONE, EDGE_NONE]
+            )
+        ],
+        is_valid_hexdoku_constraints
+    )
 }
 
 //========================================================================
@@ -218,17 +392,17 @@ function setup ()
     // Generate rotated versions of tiles for each tileset
     // 1. determine if rotating tile would result in a different image
     // 2. if so, then rotate it four ways and add each rotation as a new tile
-    // iterate backwards since we are possibly adding to tile_types
     for (const [tileset_name, tileset] of Object.entries (tilesets))
     {
-        for (let t = tileset.length - 1; t >= 0; --t)
+        // iterate backwards since we are possibly adding to the tileset
+        for (let t = tileset.tiles.length - 1; t >= 0; --t)
         {
             // determine if rotating this tile would result in a different image
             // we know it will be the same image if the all the edge types are the same
             // since rotating it will not create a different edge type pattern
-            if (tileset[t].edge_types[0] === tileset[t].edge_types[1] &&
-                tileset[t].edge_types[1] === tileset[t].edge_types[2] &&
-                tileset[t].edge_types[2] === tileset[t].edge_types[3])
+            if (tileset.tiles[t].edge_types[0] === tileset.tiles[t].edge_types[1] &&
+                tileset.tiles[t].edge_types[1] === tileset.tiles[t].edge_types[2] &&
+                tileset.tiles[t].edge_types[2] === tileset.tiles[t].edge_types[3])
             {
                 // all edge types are the same
                 // assume this is perfectly symmetrical so no need to rotate
@@ -241,39 +415,39 @@ function setup ()
             //   |   ->  ---->
             //   |
             // 90 degrees (1 turn)
-            tileset.push (new Tile (
-                tileset[t].image,
-                tileset[t].image_path,
+            tileset.tiles.push (new Tile (
+                tileset.tiles[t].image,
+                tileset.tiles[t].image_path,
                 90,
                 [
-                    tileset[t].edge_types[DIR_WEST],
-                    tileset[t].edge_types[DIR_NORTH],
-                    tileset[t].edge_types[DIR_EAST],
-                    tileset[t].edge_types[DIR_SOUTH]
+                    tileset.tiles[t].edge_types[DIR_WEST],
+                    tileset.tiles[t].edge_types[DIR_NORTH],
+                    tileset.tiles[t].edge_types[DIR_EAST],
+                    tileset.tiles[t].edge_types[DIR_SOUTH]
                 ]
             ));
             // 180 degrees (2 turns)
-            tileset.push (new Tile (
-                tileset[t].image,
-                tileset[t].image_path,
+            tileset.tiles.push (new Tile (
+                tileset.tiles[t].image,
+                tileset.tiles[t].image_path,
                 180,
                 [
-                    tileset[t].edge_types[DIR_SOUTH],
-                    tileset[t].edge_types[DIR_WEST],
-                    tileset[t].edge_types[DIR_NORTH],
-                    tileset[t].edge_types[DIR_EAST]
+                    tileset.tiles[t].edge_types[DIR_SOUTH],
+                    tileset.tiles[t].edge_types[DIR_WEST],
+                    tileset.tiles[t].edge_types[DIR_NORTH],
+                    tileset.tiles[t].edge_types[DIR_EAST]
                 ]
             ));
             // 270 degrees (3 turns)
-            tileset.push (new Tile (
-                tileset[t].image,
-                tileset[t].image_path,
+            tileset.tiles.push (new Tile (
+                tileset.tiles[t].image,
+                tileset.tiles[t].image_path,
                 270,
                 [
-                    tileset[t].edge_types[DIR_EAST],
-                    tileset[t].edge_types[DIR_SOUTH],
-                    tileset[t].edge_types[DIR_WEST],
-                    tileset[t].edge_types[DIR_NORTH]
+                    tileset.tiles[t].edge_types[DIR_EAST],
+                    tileset.tiles[t].edge_types[DIR_SOUTH],
+                    tileset.tiles[t].edge_types[DIR_WEST],
+                    tileset.tiles[t].edge_types[DIR_NORTH]
                 ]
             ));
         }
@@ -292,15 +466,38 @@ function setup ()
         // Clear previous tileset
         input_display_tileset.innerHTML = "";
         // we only want to show unique tiles so gather non-rotated tiles
-        for (let ti = 0 ; ti < tilesets[input_select_tileset.value].length; ++ti)
+        for (let ti = 0 ; ti < tilesets[input_select_tileset.value].tiles.length; ++ti)
         {
             // Ensure tile is not rotated
-            if (tilesets[input_select_tileset.value][ti].image_rotation == 0)
+            if (tilesets[input_select_tileset.value].tiles[ti].image_rotation == 0)
             {
                 let tile_image = document.createElement ("img");
-                tile_image.src = tilesets[input_select_tileset.value][ti].image_path;
+                tile_image.className = "tile";
+                tile_image.src = tilesets[input_select_tileset.value].tiles[ti].image_path;
                 input_display_tileset.append (tile_image);
             }
+        }
+        // Handle UI changes due to tileset
+        if (input_select_tileset.value == "Sudoku")
+        {
+            // Sudoku can only work with a 9x9 grid
+            // No variant sudoku yet, sorry!
+            input_slider_grid_size.value = 9;
+            input_display_grid_size.innerHTML = 9 + " x " + 9 + " [disabled]";
+            input_slider_grid_size.disabled = true;
+        }
+        else if (input_select_tileset.value == "Hexdoku")
+        {
+            // Hexdoku can only work with a 16x16 grid
+            input_slider_grid_size.value = 16;
+            input_display_grid_size.innerHTML = 16 + " x " + 16 + " [disabled]";
+            input_slider_grid_size.disabled = true;
+        }
+        else
+        {
+            // Reset grid size
+            input_display_grid_size.innerHTML = input_slider_grid_size.value + " x " + input_slider_grid_size.value;
+            input_slider_grid_size.disabled = false;
         }
     }
     // initially call function so we update display
@@ -333,12 +530,15 @@ function setup ()
 function draw ()
 {
     // frameRate (1);
-    background ("#eee");
+    background ("#000");
 
     if (should_solve)
         apply_wave_function_collapse_step ();
 
     // Draw tiles
+    // TODO: Clean this up
+    // it seems too ad-hoc/messy with the sudoku if statements
+    // maybe tileset should have a routine for drawing board and border?
     for (let i = 0; i < num_tile_rows; ++i)
     {
         for (let j = 0; j < num_tile_cols; ++j)
@@ -349,13 +549,20 @@ function draw ()
                 // Draw a black tile to denote a missing tile
                 let x = j * tile_width;
                 let y = i * tile_height;
+                stroke (0);
                 fill (0);
+                if (current_tileset_name == "Sudoku" || current_tileset_name == "Hexdoku")
+                {
+                    stroke (0);
+                    strokeWeight (1);
+                    fill (255);
+                }
                 rect (x, y, tile_width, tile_height);
                 // Draw a tiny version of each tile candidate for this cell
                 // Since we want to arrange the tiles in a square
                 // we need to fit the tiles in a grid of the
                 // next nearest square root.
-                let tile_candidate_rows = Math.ceil (Math.sqrt (tile_types.length));
+                let tile_candidate_rows = Math.ceil (Math.sqrt (tilesets[current_tileset_name].tiles.length));
                 let tile_candidate_cols = tile_candidate_rows;
                 let tile_candidate_padding = tile_width / tile_candidate_cols * .1;
                 let tile_candidate_width  = tile_width  / tile_candidate_cols - tile_candidate_padding * 2;
@@ -374,8 +581,8 @@ function draw ()
                         push ();
                         translate (cx + tile_candidate_width/2, cy + tile_candidate_height/2);
                         imageMode(CENTER);
-                        rotate (tile_types[tile_candidate].image_rotation);
-                        image (tile_types[tile_candidate].image, 0, 0, tile_candidate_width, tile_candidate_height);
+                        rotate (tilesets[current_tileset_name].tiles[tile_candidate].image_rotation);
+                        image (tilesets[current_tileset_name].tiles[tile_candidate].image, 0, 0, tile_candidate_width, tile_candidate_height);
                         pop ();
                     }
                 }
@@ -387,13 +594,50 @@ function draw ()
             push ();
             translate (x + tile_width/2, y + tile_height/2);
             imageMode(CENTER);
-            rotate (tile_types[board[i][j]].image_rotation);
-            image (tile_types[board[i][j]].image, 0, 0, tile_width, tile_height);
+            rotate (tilesets[current_tileset_name].tiles[board[i][j]].image_rotation);
+            image (tilesets[current_tileset_name].tiles[board[i][j]].image, 0, 0, tile_width, tile_height);
             pop ();
-            // Tile borders lines for debug
-            // noFill ();
-            // stroke (0);
-            // rect (x, y, tile_width, tile_height);
+            // Draw Sudoku cell borders
+            if (current_tileset_name == "Sudoku" || current_tileset_name == "Hexdoku")
+            {
+                noFill ();
+                stroke (0);
+                strokeWeight (1);
+                rect (x, y, tile_width, tile_height);
+            }
+        }
+    }
+
+    // Draw Sudoku box border lines
+    if (current_tileset_name == "Sudoku")
+    {
+        for (let bi = 0; bi < 3; ++bi)
+        {
+            for (let bj = 0; bj < 3; ++bj)
+            {
+                let x = bj * (tile_width * 3);
+                let y = bi * (tile_height * 3);
+                noFill ();
+                stroke (0);
+                strokeWeight (4);
+                rect (x, y, tile_width * 3, tile_height * 3);
+            }
+        }
+    }
+    // Draw Hexdoku box border lines
+    else if (current_tileset_name == "Hexdoku")
+    {
+        for (let bi = 0; bi < 4; ++bi)
+        {
+            for (let bj = 0; bj < 4; ++bj)
+            {
+                let x = bj * (tile_width * 4);
+                let y = bi * (tile_height * 4);
+                noFill ();
+                stroke (0);
+                strokeWeight (4);
+                rect (x, y, tile_width * 4, tile_height * 4);
+            }
         }
     }
 
@@ -419,7 +663,7 @@ function start_generating_board ()
 {
     console.log ("starting board generation with Wave Function Collapse!");
     // Set tileset
-    tile_types = tilesets[input_select_tileset.value];
+    current_tileset_name = input_select_tileset.value;
 
     // Set board size + initialize board to empty
     board = [];
@@ -469,6 +713,9 @@ function apply_wave_function_collapse_step ()
     if (is_board_filled_in ())
         return;
     // Determine tile candidates for each cell
+    // This is very wasteful as we do not need to re-generate candidates
+    // every single WFC step.
+    // TODO: make this faster
     for (let i = 0; i < num_tile_rows; ++i)
     {
         for (let j = 0; j < num_tile_cols; ++j)
@@ -478,40 +725,16 @@ function apply_wave_function_collapse_step ()
             // Ensure cell was not already collapsed
             if (board[i][j] != TILE_EMPTY)
                 continue;
-            // Check each type of tile if it can go in this cell
-            for (let tile_candidate = 0; tile_candidate < tile_types.length; ++tile_candidate)
+            // Determine which tiles are valid in this position
+            // and save them as candidates
+            for (let tile_candidate = 0; tile_candidate < tilesets[current_tileset_name].tiles.length; ++tile_candidate)
             {
-                // Ensure tile candidate agrees with NORTH tile, if exists and is filled in
-                if (i > 0 && board[i-1][j] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i-1][j]].edge_types[DIR_SOUTH], tile_types[tile_candidate].edge_types[DIR_NORTH]))
+                // Ensure candidate passes constraints
+                if (is_valid (i, j, tile_candidate))
                 {
-                    // tile candidate is not compatible with NORTH tile
-                    // skip to next tile candidate
-                    continue;
+                    // add to candidate list
+                    tile_candidates[i][j].push (tile_candidate);
                 }
-                // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i][j+1]].edge_types[DIR_WEST], tile_types[tile_candidate].edge_types[DIR_EAST]))
-                {
-                    // tile candidate is not compatible with EAST tile
-                    // skip to next tile candidate
-                    continue;
-                }
-                // Ensure tile candidate agrees with SOUTH tile, if exists and is filled in
-                if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i+1][j]].edge_types[DIR_NORTH], tile_types[tile_candidate].edge_types[DIR_SOUTH]))
-                {
-                    // tile candidate is not compatible with SOUTH tile
-                    // skip to next tile candidate
-                    continue;
-                }
-                // Ensure tile candidate agrees with EAST tile, if exists and is filled in
-                if (j > 0 && board[i][j-1] != TILE_EMPTY && !do_edge_types_match (tile_types[board[i][j-1]].edge_types[DIR_EAST], tile_types[tile_candidate].edge_types[DIR_WEST]))
-                {
-                    // tile candidate is not compatible with EAST tile
-                    // skip to next tile candidate
-                    continue;
-                }
-                // Reaches here if tile candidate is compatible with all filled-in neighboring tiles
-                // add to candidate list
-                tile_candidates[i][j].push (tile_candidate);
             }
         }
     }
@@ -535,9 +758,9 @@ function apply_wave_function_collapse_step ()
             }
             // Ensure cell has only 1 candidate to be able to collapse it
             if (tile_candidates[i][j].length != 1)
-                // more than one or zero candidates so we cannot collapse
+                // more than one candidates so we cannot collapse
                 continue;
-            // Collapse cell
+            // Collapse cell with single possibility
             board[i][j] = tile_candidates[i][j][0];
             has_collapsed = true;
         }
@@ -548,7 +771,7 @@ function apply_wave_function_collapse_step ()
     {
         // determine which cells have the lowest entropy
         // (lowest num candidates)
-        let lowest_entropy = tile_types.length;
+        let lowest_entropy = tilesets[current_tileset_name].tiles.length;
         // stores [i,j] for each cell of the lowest entropy set
         let lowest_entropy_cells = []; 
         for (let i = 0; i < num_tile_rows && !has_collapsed; ++i)
@@ -636,32 +859,6 @@ function is_board_filled_in ()
 
 //========================================================================
 
-// checks if two edge type codes match
-// Edge type codes match if code string A matches the reverse of code
-// string B. Reversing the string is a solution to asymmetric sides
-// matching themselves and looking visually wrong.
-function do_edge_types_match (edge_type_a, edge_type_b)
-{
-    // Ensure string lengths match - otherwise strings will not match
-    if (edge_type_a.length != edge_type_b.length)
-            return false;
-    let edge_type_b_reversed = edge_type_b.split ('').reverse (). join ("");
-    // Check each char to see if strings match
-    for (let i = 0; i < edge_type_a.length; ++i)
-    {
-        if (edge_type_a[i] !== edge_type_b_reversed[i])
-        {
-            // found a char that does not match!
-            // codes do not match
-            return false;
-        }
-    }
-    // did not find a different char - all chars are same - strings match
-    return true;
-}
-
-//========================================================================
-
 // This restores the previous board state that was saved when we made a
 // random move. Use this as soon as something unsolvable shows up like
 // zero candidates for a cell. This allows us to try all possible
@@ -700,4 +897,224 @@ function backtrack ()
     // future, since that would cause an infinite loop
     next_candidates.splice (next_candidates.indexOf (new_tile), 1);
 
+}
+
+//========================================================================
+
+// returns true if the given tile does not break any constraints
+// of the current tileset for the given cell position, otherwise false.
+// Since different tilesets may have different constraints,
+// this will dispatch to the appropriate constraint checker.
+function is_valid (i, j, tile_enum)
+{
+    return tilesets[current_tileset_name].is_valid_function (i, j, tile_enum);
+}
+
+//========================================================================
+
+// returns true if the given tile's edge sockets match with neighboring
+// NORTH, EAST, SOUTH, and WEST tile's edge sockets.
+function is_valid_edge_socket_checks (i, j, tile_enum)
+{
+    // Ensure tile candidate agrees with NORTH tile,
+    // if exists and is filled in
+    if (i > 0 && board[i-1][j] != TILE_EMPTY && !do_edge_types_match (tilesets[current_tileset_name].tiles[board[i-1][j]].edge_types[DIR_SOUTH], tilesets[current_tileset_name].tiles[tile_enum].edge_types[DIR_NORTH]))
+    {
+        // tile candidate is not compatible with NORTH tile
+        return false;
+    }
+    // Ensure tile candidate agrees with EAST tile,
+    // if exists and is filled in
+    if (j+1 < num_tile_cols && board[i][j+1] != TILE_EMPTY && !do_edge_types_match (tilesets[current_tileset_name].tiles[board[i][j+1]].edge_types[DIR_WEST], tilesets[current_tileset_name].tiles[tile_enum].edge_types[DIR_EAST]))
+    {
+        // tile candidate is not compatible with EAST tile
+        return false;
+    }
+    // Ensure tile candidate agrees with SOUTH tile,
+    // if exists and is filled in
+    if (i+1 < num_tile_rows && board[i+1][j] != TILE_EMPTY && !do_edge_types_match (tilesets[current_tileset_name].tiles[board[i+1][j]].edge_types[DIR_NORTH], tilesets[current_tileset_name].tiles[tile_enum].edge_types[DIR_SOUTH]))
+    {
+        // tile candidate is not compatible with SOUTH tile
+        return false;
+    }
+    // Ensure tile candidate agrees with EAST tile,
+    // if exists and is filled in
+    if (j > 0 && board[i][j-1] != TILE_EMPTY && !do_edge_types_match (tilesets[current_tileset_name].tiles[board[i][j-1]].edge_types[DIR_EAST], tilesets[current_tileset_name].tiles[tile_enum].edge_types[DIR_WEST]))
+    {
+        // tile candidate is not compatible with EAST tile
+        return false;
+    }
+    // Reaches here if tile type is compatible with all filled-in
+    // neighboring tiles.
+    return true;
+}
+
+//========================================================================
+
+// checks if two edge type codes match
+// Edge type codes match if code string A matches the reverse of code
+// string B. Reversing the string is a solution to asymmetric sides
+// matching themselves and looking visually wrong.
+function do_edge_types_match (edge_type_a, edge_type_b)
+{
+    // Ensure string lengths match - otherwise strings will not match
+    if (edge_type_a.length != edge_type_b.length)
+            return false;
+    let edge_type_b_reversed = edge_type_b.split ('').reverse (). join ("");
+    // Check each char to see if strings match
+    for (let i = 0; i < edge_type_a.length; ++i)
+    {
+        if (edge_type_a[i] !== edge_type_b_reversed[i])
+        {
+            // found a char that does not match!
+            // codes do not match
+            return false;
+        }
+    }
+    // did not find a different char - all chars are same - strings match
+    return true;
+}
+
+//========================================================================
+
+// returns true if the given tile (digit) abides by Sudoku rules,
+// otherwise false.
+// Sudoku Rules: the digits 1-9 must appear in every row, column, and
+// 3x3 box, once each.
+function is_valid_sudoku_constraints (i, j, tile_enum)
+{
+    // Ensure digit does not repeat along row
+    for (let jj = 0; jj < num_tile_cols; ++jj)
+    {
+        // Ensure we are not looking at the current cell
+        // This is a safety incase the digit is already filled in
+        if (jj == j)
+            continue;
+        // We only want to check against filled in digits so
+        // Ensure cell is filled in before comparing
+        if (board[i][jj] == TILE_EMPTY)
+            continue;
+        // Check if digit is repeated
+        if (board[i][jj] == tile_enum)
+            // Repeated digit!
+            // value is not valid
+            return false;
+        // Digit doesnt match, keep checking...
+    }
+    // Ensure digit does not repeat along column
+    for (let ii = 0; ii < num_tile_rows; ++ii)
+    {
+        // Ensure we are not looking at the current cell
+        // This is a safety incase the digit is already filled in
+        if (ii == i)
+            continue;
+        // We only want to check against filled in digits so
+        // Ensure cell is filled in before comparing
+        if (board[ii][j] == TILE_EMPTY)
+            continue;
+        // Check if digit is repeated
+        if (board[ii][j] == tile_enum)
+            // Repeated digit!
+            // value is not valid
+            return false;
+        // Digit doesnt match, keep checking...
+    }
+    // Ensure digit does not repeat in 3x3 box
+    let box_dim = 3;
+    let box_i = Math.floor (i / box_dim);
+    let box_j = Math.floor (j / box_dim);
+    for (let bi = box_i * box_dim; bi < (box_i + 1) * box_dim; ++bi)
+    {
+        for (let bj = box_j * box_dim; bj < (box_j + 1) * box_dim; ++bj)
+        {
+            // Ensure we are not looking at the current cell
+            // This is a safety incase the digit is already filled in
+            if (bi == i && bj == j)
+                continue;
+            // We only want to check against filled in digits so
+            // Ensure cell is filled in before comparing
+            if (board[bi][bj] == TILE_EMPTY)
+                continue;
+            // Check if digit is repeated
+            if (board[bi][bj] == tile_enum)
+                // Repeated digit!
+                // value is not valid
+                return false;
+        }
+    }
+    // Reaches here if this digit did not break any constraints
+    // Digit should be valid
+    return true;
+}
+
+//========================================================================
+
+// returns true if the given tile (digit) abides by Hexdoku rules,
+// otherwise false.
+// Hexdoku Rules: the hex digits 0-f must appear in every row, column, and
+// 4x4 box, once each.
+function is_valid_hexdoku_constraints (i, j, tile_enum)
+{
+    // Ensure digit does not repeat along row
+    for (let jj = 0; jj < num_tile_cols; ++jj)
+    {
+        // Ensure we are not looking at the current cell
+        // This is a safety incase the digit is already filled in
+        if (jj == j)
+            continue;
+        // We only want to check against filled in digits so
+        // Ensure cell is filled in before comparing
+        if (board[i][jj] == TILE_EMPTY)
+            continue;
+        // Check if digit is repeated
+        if (board[i][jj] == tile_enum)
+            // Repeated digit!
+            // value is not valid
+            return false;
+        // Digit doesnt match, keep checking...
+    }
+    // Ensure digit does not repeat along column
+    for (let ii = 0; ii < num_tile_rows; ++ii)
+    {
+        // Ensure we are not looking at the current cell
+        // This is a safety incase the digit is already filled in
+        if (ii == i)
+            continue;
+        // We only want to check against filled in digits so
+        // Ensure cell is filled in before comparing
+        if (board[ii][j] == TILE_EMPTY)
+            continue;
+        // Check if digit is repeated
+        if (board[ii][j] == tile_enum)
+            // Repeated digit!
+            // value is not valid
+            return false;
+        // Digit doesnt match, keep checking...
+    }
+    // Ensure digit does not repeat in 4x4 box
+    let box_dim = 4;
+    let box_i = Math.floor (i / box_dim);
+    let box_j = Math.floor (j / box_dim);
+    for (let bi = box_i * box_dim; bi < (box_i + 1) * box_dim; ++bi)
+    {
+        for (let bj = box_j * box_dim; bj < (box_j + 1) * box_dim; ++bj)
+        {
+            // Ensure we are not looking at the current cell
+            // This is a safety incase the digit is already filled in
+            if (bi == i && bj == j)
+                continue;
+            // We only want to check against filled in digits so
+            // Ensure cell is filled in before comparing
+            if (board[bi][bj] == TILE_EMPTY)
+                continue;
+            // Check if digit is repeated
+            if (board[bi][bj] == tile_enum)
+                // Repeated digit!
+                // value is not valid
+                return false;
+        }
+    }
+    // Reaches here if this digit did not break any constraints
+    // Digit should be valid
+    return true;
 }
